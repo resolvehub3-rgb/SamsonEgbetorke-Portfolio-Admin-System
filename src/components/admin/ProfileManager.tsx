@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User, Upload, Check, Loader2, Save, Mail, MapPin } from 'lucide-react';
 import { Profile } from '../../types/portfolio.ts';
 import { portfolioService } from '../../services/portfolioService.ts';
@@ -20,6 +20,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
   const [formData, setFormData] = useState<Profile>({ ...profile });
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
   const [success, setSuccess] = useState(false);
 
   const handleChange = (
@@ -41,6 +42,7 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
       console.error('Avatar upload failed:', err);
     } finally {
       setUploadingAvatar(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -101,20 +103,25 @@ export const ProfileManager: React.FC<ProfileManagerProps> = ({
                 placeholder="Avatar URL or upload image file..."
                 className="flex-1 min-w-[200px] px-3 py-1.5 text-xs bg-slate-900 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-sky-500"
               />
-              <label className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0">
+              <button
+                type="button"
+                onClick={() => avatarFileInputRef.current?.click()}
+                className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0"
+              >
                 {uploadingAvatar ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
                   <Upload className="w-3.5 h-3.5" />
                 )}
                 <span>Upload</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarFile}
-                  className="hidden"
-                />
-              </label>
+              </button>
+              <input
+                ref={avatarFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleAvatarFile}
+                className="sr-only"
+              />
             </div>
           </div>
         </div>

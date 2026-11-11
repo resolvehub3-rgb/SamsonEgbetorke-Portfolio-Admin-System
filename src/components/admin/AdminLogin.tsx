@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { Shield, Lock, Mail, ArrowLeft, Loader2, AlertCircle, KeyRound, Sparkles } from 'lucide-react';
+import { Shield, Lock, Mail, ArrowLeft, Loader2, AlertCircle, KeyRound } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext.tsx';
 
 interface AdminLoginProps {
@@ -12,7 +12,7 @@ interface AdminLoginProps {
 }
 
 export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToSite }) => {
-  const { signIn, localAdminSignIn, isConfigured } = useAuth();
+  const { signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,10 +34,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToSite }) => {
     if (!res.success) {
       setError(res.error || 'Authentication failed. Please verify credentials.');
     }
-  };
-
-  const handleQuickPreviewAdmin = () => {
-    localAdminSignIn();
   };
 
   return (
@@ -123,23 +119,6 @@ export const AdminLogin: React.FC<AdminLoginProps> = ({ onBackToSite }) => {
             </button>
           </form>
 
-          {/* Quick Verification / Owner Test Bypass */}
-          <div className="pt-4 border-t border-slate-800/80 text-center space-y-3">
-            <div className="flex items-center gap-1.5 justify-center text-[11px] text-slate-400">
-              <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-              <span>Owner Instant Access Mode</span>
-            </div>
-            <button
-              type="button"
-              onClick={handleQuickPreviewAdmin}
-              className="w-full py-2 px-3 text-xs font-medium text-sky-300 bg-slate-900/80 hover:bg-slate-800 border border-slate-700/60 rounded-lg transition-colors cursor-pointer"
-            >
-              Enter Admin Dashboard Directly
-            </button>
-            <p className="text-[11px] text-slate-400">
-              Allows owner to manage content and configure Supabase connection keys from within the dashboard.
-            </p>
-          </div>
         </div>
       </div>
     </div>

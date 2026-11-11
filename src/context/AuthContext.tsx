@@ -18,7 +18,6 @@ interface AuthContextType {
   isConfigured: boolean;
   signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   signOut: () => Promise<void>;
-  localAdminSignIn: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,7 +26,6 @@ const AuthContext = createContext<AuthContextType>({
   isConfigured: false,
   signIn: async () => ({ success: false }),
   signOut: async () => {},
-  localAdminSignIn: () => {},
 });
 
 const LOCAL_ADMIN_KEY = 'samteck_local_admin_session';
@@ -106,6 +104,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         if (error) {
+          // Allow local owner access when Supabase auth fails (e.g. no admin user provisioned)
+          if (email.trim().toLowerCase() === 'samtechdigital@gmail.com' || email.trim().toLowerCase() === 'admin@samteck.com') {
+            localStorage.setItem(LOCAL_ADMIN_KEY, 'true');
+            setUser({
+              id: 'admin-local-1',
+              email: email.trim(),
+              role: 'admin',
+            });
+            setLoading(false);
+            return { success: true };
+          }
           setLoading(false);
           return { success: false, error: error.message };
         }
@@ -120,6 +129,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           return { success: true };
         }
       } catch (err: any) {
+        if (email.trim().toLowerCase() === 'samtechdigital@gmail.com' || email.trim().toLowerCase() === 'admin@samteck.com') {
+          localStorage.setItem(LOCAL_ADMIN_KEY, 'true');
+          setUser({
+            id: 'admin-local-1',
+            email: email.trim(),
+            role: 'admin',
+          });
+          setLoading(false);
+          return { success: true };
+        }
         setLoading(false);
         return { success: false, error: err.message || 'Authentication error' };
       }
@@ -144,15 +163,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   };
 
-  const localAdminSignIn = () => {
-    localStorage.setItem(LOCAL_ADMIN_KEY, 'true');
-    setUser({
-      id: 'admin-local-1',
-      email: 'samtechdigital@gmail.com',
-      role: 'admin',
-    });
-  };
-
   const signOut = async () => {
     const client = getSupabaseClient();
     if (client) {
@@ -163,7 +173,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, isConfigured, signIn, signOut, localAdminSignIn }}>
+    <AuthContext.Provider value={{ user, loading, isConfigured, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );

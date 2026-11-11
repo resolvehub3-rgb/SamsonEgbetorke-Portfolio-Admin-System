@@ -86,7 +86,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       <aside
         className={`${
           mobileSidebarOpen ? 'block' : 'hidden'
-        } md:flex flex-col w-full md:w-64 bg-[#0B1530] border-r border-slate-800 shrink-0 md:sticky md:top-0 md:h-screen z-30 transition-all`}
+        } md:flex flex-col w-full md:w-64 bg-[#0B1530] border-r border-slate-800 shrink-0 md:self-start md:sticky md:top-0 md:h-screen z-30 transition-all`}
       >
         {/* Brand Lockup */}
         <div className="p-6 border-b border-slate-800 flex items-center justify-between">
@@ -153,7 +153,7 @@ export const AdminLayout: React.FC<AdminLayoutProps> = ({
       </aside>
 
       {/* Main Content Viewport */}
-      <main className="flex-1 min-w-0 overflow-y-auto">
+      <main className="flex-1 min-w-0">
         {/* Top bar */}
         <header className="hidden md:flex h-16 border-b border-slate-800 bg-[#0B1530]/60 backdrop-blur px-8 items-center justify-between sticky top-0 z-20">
           <div className="flex items-center gap-2 text-xs font-medium text-slate-400">

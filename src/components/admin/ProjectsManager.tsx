@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Plus,
   Search,
@@ -39,6 +39,7 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
   const [editingProject, setEditingProject] = useState<ProjectItem | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const projectFileInputRef = useRef<HTMLInputElement>(null);
 
   // Form temporary string representations for tags
   const [featuresText, setFeaturesText] = useState('');
@@ -110,6 +111,7 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
       console.error('Image upload failed:', err);
     } finally {
       setUploadingImage(false);
+      if (e.target) e.target.value = '';
     }
   };
 
@@ -597,20 +599,25 @@ export const ProjectsManager: React.FC<ProjectsManagerProps> = ({
                     placeholder="Paste image URL or upload file below..."
                     className="flex-1 px-3 py-2 text-xs bg-slate-900 border border-slate-800 rounded-lg text-white focus:outline-none focus:border-sky-500"
                   />
-                  <label className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => projectFileInputRef.current?.click()}
+                    className="cursor-pointer inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-slate-200 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors shrink-0"
+                  >
                     {uploadingImage ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : (
                       <Upload className="w-3.5 h-3.5" />
                     )}
                     <span>{uploadingImage ? 'Uploading...' : 'Upload Image'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageFileChange}
-                      className="hidden"
-                    />
-                  </label>
+                  </button>
+                  <input
+                    ref={projectFileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageFileChange}
+                    className="sr-only"
+                  />
                 </div>
                 <p className="text-[11px] text-slate-400">
                   If left empty, a neutral architectural blueprint placeholder will be rendered automatically.

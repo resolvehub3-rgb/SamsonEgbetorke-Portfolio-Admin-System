@@ -478,11 +478,13 @@ function getLocalStore<T>(key: string, defaultData: T): T {
   }
 }
 
-function setLocalStore<T>(key: string, data: T): void {
+function setLocalStore<T>(key: string, data: T, notify: boolean = true): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(key, JSON.stringify(data));
-    window.dispatchEvent(new CustomEvent('samteck_data_changed', { detail: { key } }));
+    if (notify) {
+      window.dispatchEvent(new CustomEvent('samteck_data_changed', { detail: { key } }));
+    }
   } catch (e) {
     console.error('Storage write error:', e);
   }
@@ -491,12 +493,20 @@ function setLocalStore<T>(key: string, data: T): void {
 export const portfolioService = {
   // --- PROFILE ---
   async getProfile(): Promise<Profile> {
+    // Prefer locally persisted data (includes admin edits that may not have
+    // synced to Supabase) so changes show up on the public site immediately.
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.PROFILE);
+      if (cached) {
+        try { return JSON.parse(cached) as Profile; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('profiles').select('*').limit(1).maybeSingle();
         if (!error && data) {
-          setLocalStore(STORAGE_KEYS.PROFILE, data);
+          setLocalStore(STORAGE_KEYS.PROFILE, data, false);
           return data;
         }
       } catch (err) {
@@ -528,12 +538,18 @@ export const portfolioService = {
 
   // --- EDUCATION ---
   async getEducation(): Promise<EducationItem[]> {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.EDUCATION);
+      if (cached) {
+        try { const parsed = JSON.parse(cached) as EducationItem[]; if (parsed && parsed.length) return parsed; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('education').select('*').order('display_order', { ascending: true });
         if (!error && data && data.length > 0) {
-          setLocalStore(STORAGE_KEYS.EDUCATION, data);
+          setLocalStore(STORAGE_KEYS.EDUCATION, data, false);
           return data;
         }
       } catch (err) {
@@ -593,12 +609,18 @@ export const portfolioService = {
 
   // --- WORK EXPERIENCE ---
   async getExperience(): Promise<WorkExperienceItem[]> {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.EXPERIENCE);
+      if (cached) {
+        try { const parsed = JSON.parse(cached) as WorkExperienceItem[]; if (parsed && parsed.length) return parsed; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('work_experience').select('*').order('display_order', { ascending: true });
         if (!error && data && data.length > 0) {
-          setLocalStore(STORAGE_KEYS.EXPERIENCE, data);
+          setLocalStore(STORAGE_KEYS.EXPERIENCE, data, false);
           return data;
         }
       } catch (err) {
@@ -660,6 +682,12 @@ export const portfolioService = {
 
   // --- SKILLS & CATEGORIES ---
   async getSkillCategories(): Promise<SkillCategory[]> {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.SKILLS);
+      if (cached) {
+        try { const parsed = JSON.parse(cached) as SkillCategory[]; if (parsed && parsed.length) return parsed; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
@@ -669,7 +697,7 @@ export const portfolioService = {
           .order('display_order', { ascending: true });
 
         if (!catError && categories && categories.length > 0) {
-          setLocalStore(STORAGE_KEYS.SKILLS, categories);
+          setLocalStore(STORAGE_KEYS.SKILLS, categories, false);
           return categories;
         }
       } catch (err) {
@@ -766,12 +794,18 @@ export const portfolioService = {
 
   // --- SERVICES ---
   async getServices(): Promise<ServiceItem[]> {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.SERVICES);
+      if (cached) {
+        try { const parsed = JSON.parse(cached) as ServiceItem[]; if (parsed && parsed.length) return parsed; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('services').select('*').order('display_order', { ascending: true });
         if (!error && data && data.length > 0) {
-          setLocalStore(STORAGE_KEYS.SERVICES, data);
+          setLocalStore(STORAGE_KEYS.SERVICES, data, false);
           return data;
         }
       } catch (err) {
@@ -831,8 +865,24 @@ export const portfolioService = {
   // --- PROJECTS ---
   async getProjects(filter?: { publishedOnly?: boolean; featuredOnly?: boolean }): Promise<ProjectItem[]> {
     let list: ProjectItem[] = [];
-    const client = getSupabaseClient();
 
+    // Prefer locally persisted data so admin edits (including images) show up.
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached) as ProjectItem[];
+          if (parsed && parsed.length) {
+            list = parsed;
+            if (filter?.publishedOnly) list = list.filter(p => p.publishing_status === 'published');
+            if (filter?.featuredOnly) list = list.filter(p => p.is_featured);
+            return list;
+          }
+        } catch { /* fall through */ }
+      }
+    }
+
+    const client = getSupabaseClient();
     if (client) {
       try {
         let query = client.from('projects').select('*, project_images(*)').order('display_order', { ascending: true });
@@ -848,7 +898,9 @@ export const portfolioService = {
             ...p,
             screenshots: p.project_images || [],
           }));
-          setLocalStore(STORAGE_KEYS.PROJECTS, list);
+          setLocalStore(STORAGE_KEYS.PROJECTS, list, false);
+          if (filter?.publishedOnly) list = list.filter(p => p.publishing_status === 'published');
+          if (filter?.featuredOnly) list = list.filter(p => p.is_featured);
           return list;
         }
       } catch (err) {
@@ -867,6 +919,17 @@ export const portfolioService = {
   },
 
   async getProjectBySlug(slug: string): Promise<ProjectItem | null> {
+    // Prefer locally persisted data so admin edits (including images) are reflected.
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.PROJECTS);
+      if (cached) {
+        try {
+          const projects = JSON.parse(cached) as ProjectItem[];
+          const found = projects.find(p => p.slug === slug);
+          if (found) return found;
+        } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
@@ -971,18 +1034,30 @@ export const portfolioService = {
       }
     }
 
-    // Local object URL fallback for offline preview
-    return URL.createObjectURL(file);
+    // Local data-URL fallback so the image persists in storage/DB instead of a
+    // session-only blob URL (which breaks after a page reload).
+    return await new Promise<string>((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(URL.createObjectURL(file));
+      reader.readAsDataURL(file);
+    });
   },
 
   // --- ACHIEVEMENTS ---
   async getAchievements(): Promise<AchievementItem[]> {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.ACHIEVEMENTS);
+      if (cached) {
+        try { const parsed = JSON.parse(cached) as AchievementItem[]; if (parsed && parsed.length) return parsed; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('achievements').select('*').order('display_order', { ascending: true });
         if (!error && data && data.length > 0) {
-          setLocalStore(STORAGE_KEYS.ACHIEVEMENTS, data);
+          setLocalStore(STORAGE_KEYS.ACHIEVEMENTS, data, false);
           return data;
         }
       } catch (err) {
@@ -1076,19 +1151,26 @@ export const portfolioService = {
   },
 
   async getContactEnquiries(): Promise<ContactEnquiryItem[]> {
+    const local = getLocalStore<ContactEnquiryItem[]>(STORAGE_KEYS.ENQUIRIES, []);
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('contact_enquiries').select('*').order('created_at', { ascending: false });
         if (!error && data) {
-          setLocalStore(STORAGE_KEYS.ENQUIRIES, data);
-          return data;
+          // Merge server + local, dedup by id, so admin edits/local submissions survive.
+          const merged = [...data];
+          for (const l of local) {
+            if (!merged.find(m => m.id === l.id)) merged.unshift(l);
+          }
+          merged.sort((a, b) => (b.created_at || '').localeCompare(a.created_at || ''));
+          setLocalStore(STORAGE_KEYS.ENQUIRIES, merged, false);
+          return merged;
         }
       } catch (err) {
         console.warn('Supabase query contact enquiries fallback:', err);
       }
     }
-    return getLocalStore<ContactEnquiryItem[]>(STORAGE_KEYS.ENQUIRIES, []);
+    return local;
   },
 
   async updateEnquiryStatus(id: string, status: ContactEnquiryItem['status']): Promise<void> {
@@ -1123,12 +1205,18 @@ export const portfolioService = {
 
   // --- WEBSITE SETTINGS ---
   async getWebsiteSettings(): Promise<WebsiteSettings> {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      if (cached) {
+        try { return JSON.parse(cached) as WebsiteSettings; } catch { /* fall through */ }
+      }
+    }
     const client = getSupabaseClient();
     if (client) {
       try {
         const { data, error } = await client.from('website_settings').select('*').eq('key', 'general').maybeSingle();
         if (!error && data && data.value) {
-          setLocalStore(STORAGE_KEYS.SETTINGS, data.value);
+          setLocalStore(STORAGE_KEYS.SETTINGS, data.value, false);
           return data.value;
         }
       } catch (err) {
